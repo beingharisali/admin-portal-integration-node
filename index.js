@@ -7,7 +7,7 @@ const cors = require('cors')
 
 const port = process.env.PORT
 connectDB()
-app.use(cors({origin:['http://localhost:5173', "https://crud-integration-admin-vite.vercel.app/"]}))
+app.use(cors({origin:'https://crud-integration-admin-vite.vercel.app'}))
 app.use(express.json())
 app.use('/', productRouter)
 
