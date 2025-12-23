@@ -3,13 +3,15 @@ const express = require('express')
 const app = express()
 const connectDB = require('./connect')
 const productRouter = require('./routes/product')
+const userRouter = require('./routes/user')
 const cors = require('cors')
 
 const port = process.env.PORT
 connectDB()
-app.use(cors({origin:'https://crud-integration-admin-vite.vercel.app'}))
+app.use(cors({origin:'http://localhost:5173'}))
 app.use(express.json())
 app.use('/', productRouter)
+app.use('/', userRouter)
 
 app.listen(port, ()=>{
     console.log(`Application is up and running on port ${port}`)
