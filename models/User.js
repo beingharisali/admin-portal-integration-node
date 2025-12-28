@@ -22,6 +22,14 @@ const userSchema = new mongoose.Schema({
         type:String,
         required:[true, "Please fill password field"],
         minLength:[8, "Password should be at least 8 characters"]
+    },
+    resetPasswordToken:{
+        type:String,
+        default:null
+    },
+    resetPasswordTokenExpiry:{
+        type:Date,
+        default:null
     }
 })
 

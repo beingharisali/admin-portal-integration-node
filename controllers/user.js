@@ -1,6 +1,7 @@
 const userModel = require('../models/User')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const nodemailer = require('nodemailer')
 const register =async (req, res)=>{
     const {firstName, lastName, email, password} = req.body
     const existingUser = await userModel.findOne({email})
@@ -50,4 +51,62 @@ const login =async (req, res)=>{
     })
 }
 
-module.exports = {register, login}
+const sendResetPasswordEmail = async (email, resetToken)=>{
+    try {
+        const transporter = nodemailer.createTransport({
+                service:'gmail',
+                port:587,
+                secure:false,
+                auth:{
+                    user:process.env.SMTP_EMAIL,
+                    pass:process.env.SMTP_PASSWORD
+                }
+            })
+            const resetLink = `http://localhost:5173/reset-password/${resetToken}`
+            const mailOptions = {
+                from:process.env.SMTP_EMAIL,
+                to: email,
+                subject:"Forget Password Email",
+                html:`Please click on this link to reset your password <a href=${resetLink}>${resetLink}</a>`
+            }
+            await transporter.sendMail(mailOptions)
+            console.log(`Reset Password Link sent to ${email}`)
+        
+    } catch (error) {
+        console.log('error',error)
+    }
+}
+
+const forgetPassword = async(req, res)=>{
+    try {
+        const {email} = req.body
+        const existingUser = await userModel.findOne({email})
+    if (!existingUser) {
+        return res.status(404).json({
+            success:false,
+            msg:"Email don't exist"
+        })
+    }
+    const resetToken = jwt.sign({
+        email:existingUser.email,
+        id:existingUser._id
+    }, process.env.JWT_SECRET, {expiresIn:'1h'})
+    existingUser.resetPasswordToken = resetToken
+    existingUser.resetPasswordTokenExpiry = Date.now() + 36000
+
+    await sendResetPasswordEmail(email, resetToken)
+        res.status(200).json({
+            success:true,
+            msg:"Email sent successfully"
+        })
+        
+    } catch (error) {
+        res.status(500).json({
+            success:false,
+            msg:'Internal Server Error',
+            error
+        })
+    }
+}
+
+module.exports = {register, login, forgetPassword}
