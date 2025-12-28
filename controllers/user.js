@@ -92,7 +92,7 @@ const forgetPassword = async(req, res)=>{
         id:existingUser._id
     }, process.env.JWT_SECRET, {expiresIn:'1h'})
     existingUser.resetPasswordToken = resetToken
-    existingUser.resetPasswordTokenExpiry = Date.now() + 36000
+    existingUser.resetPasswordTokenExpiry = Date.now() + 3600000
 
     await sendResetPasswordEmail(email, resetToken)
         res.status(200).json({
@@ -108,5 +108,53 @@ const forgetPassword = async(req, res)=>{
         })
     }
 }
+const resetPassword = async(req, res)=>{
+    const {password} = req.body;
+    const {token} = req.params;
+    console.log('token', token)
+    try {
+        const user = await userModel.findOne({resetPasswordToken:token, resetPasswordTokenExpiry:{$gt:Date.now()}})
+        if (!user) {
+            return res.status(400).json({
+                success:false,
+                msg:"Invalid or expired Token"
+            })
+        }
+        const hashedPassword = await bcrypt.hash(password, 10)
+        user.password = hashedPassword
+        user.resetPasswordToken = null
+        user.resetPasswordTokenExpiry = null
 
-module.exports = {register, login, forgetPassword}
+        const resetEmail = user.email
+        const mailOptions = {
+            from: process.env.SMTP_EMAIL,
+            to: resetEmail,
+            subject: `<h1>Reset Password Success</h1>`,
+            html:`<p>Your password has been reset successfully. Please login with new password</p>`
+        }
+        const transporter = nodemailer.createTransport({
+            service:'gmail',
+                port:587,
+                secure:false,
+                auth:{
+                    user:process.env.SMTP_EMAIL,
+                    pass:process.env.SMTP_PASSWORD
+                }
+        })
+        await transporter.sendMail(mailOptions)
+        console.log('reset token', token)
+        console.log('Password reset email sent successfully')
+        res.status(200).json({
+            success:true,
+            msg:"Password reset successfully"
+        })
+    } catch (error) {
+        res.status(500).json({
+            success:false,
+            msg:"Internal Server Error",
+            error
+        })
+    }
+}
+
+module.exports = {register, login, forgetPassword, resetPassword}
